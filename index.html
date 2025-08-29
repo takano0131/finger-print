@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>デバイスフィンガープリント</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        pre { background: #f4f4f4; padding: 1em; border-radius: 5px; }
+        .tab { margin-bottom: 1em; }
+        button.selected { background: #0078d4; color: #fff; }
+    </style>
+</head>
+<body>
+    <h1>デバイスフィンガープリント</h1>
+    <div class="tab">
+        <button id="btn-noip" class="selected" onclick="switchMode('noip')">IP考慮なし</button>
+        <button id="btn-ip" onclick="switchMode('ip')">IP考慮あり</button>
+    </div>
+    <button onclick="showFingerprint()">フィンガープリントを表示</button>
+    <pre id="fingerprint"></pre>
+    <script>
+    let mode = 'noip';
+
+    function switchMode(newMode) {
+        mode = newMode;
+        document.getElementById('btn-noip').classList.toggle('selected', mode === 'noip');
+        document.getElementById('btn-ip').classList.toggle('selected', mode === 'ip');
+        document.getElementById('fingerprint').textContent = '';
+    }
+
+    async function getIP() {
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            return data.ip;
+        } catch (e) {
+            return 'IP取得失敗';
+        }
+    }
+
+    async function getFingerprint() {
+        const baseInfo = [
+            navigator.userAgent,
+            navigator.language,
+            navigator.platform,
+            navigator.hardwareConcurrency,
+            navigator.deviceMemory,
+            screen.width,
+            screen.height,
+            screen.colorDepth,
+            Intl.DateTimeFormat().resolvedOptions().timeZone
+        ];
+        if (mode === 'ip') {
+            const ip = await getIP();
+            baseInfo.push(ip);
+        }
+        return sha256(baseInfo.join('||'));
+    }
+
+    async function sha256(str) {
+        const buf = new TextEncoder().encode(str);
+        const hash = await crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function showFingerprint() {
+        const fp = await getFingerprint();
+        document.getElementById('fingerprint').textContent = fp;
+    }
+    </script>
+</body>
+</html>
