@@ -13,10 +13,16 @@
 <body>
     <h1>デバイスフィンガープリント</h1>
     <div class="tab">
-        <button id="btn-noip" class="selected" onclick="switchMode('noip')">IP考慮なし</button>
-        <button id="btn-ip" onclick="switchMode('ip')">IP考慮あり</button>
+        <button id="btn-noip" class="selected" onclick="switchMode('noip') || showFingerprint()">IP考慮なし</button>
+        <button id="btn-ip" onclick="switchMode('ip') || showFingerprint()">IP考慮あり</button>
     </div>
     <button onclick="showFingerprint()">フィンガープリントを表示</button>
+    <h2>フィンガープリント元データ</h2>
+    <table id="fpdata" border="1" style="border-collapse:collapse;margin-bottom:1em;">
+        <thead><tr><th>項目</th><th>値</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <h2>フィンガープリント</h2>
     <pre id="fingerprint"></pre>
     <script>
     let mode = 'noip';
@@ -38,23 +44,61 @@
         }
     }
 
+
     async function getFingerprint() {
-        const baseInfo = [
-            navigator.userAgent,
-            navigator.language,
-            navigator.platform,
-            navigator.hardwareConcurrency,
-            navigator.deviceMemory,
-            screen.width,
-            screen.height,
-            screen.colorDepth,
-            Intl.DateTimeFormat().resolvedOptions().timeZone
+        const fpData = getFingerprintData();
+        let baseInfo = [
+            fpData['userAgent'],
+            fpData['language'],
+            fpData['platform'],
+            fpData['hardwareConcurrency'],
+            fpData['deviceMemory'],
+            fpData['screenWidth'],
+            fpData['screenHeight'],
+            fpData['colorDepth'],
+            fpData['timezone']
         ];
         if (mode === 'ip') {
             const ip = await getIP();
             baseInfo.push(ip);
         }
         return sha256(baseInfo.join('||'));
+    }
+
+    function getFingerprintData() {
+        return {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            platform: navigator.platform,
+            hardwareConcurrency: navigator.hardwareConcurrency,
+            deviceMemory: navigator.deviceMemory,
+            screenWidth: screen.width,
+            screenHeight: screen.height,
+            colorDepth: screen.colorDepth,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+    }
+
+    function renderFingerprintData() {
+        const fpData = getFingerprintData();
+        const tbody = document.querySelector('#fpdata tbody');
+        tbody.innerHTML = '';
+        const labels = {
+            userAgent: 'navigator.userAgent',
+            language: 'navigator.language',
+            platform: 'navigator.platform',
+            hardwareConcurrency: 'navigator.hardwareConcurrency',
+            deviceMemory: 'navigator.deviceMemory',
+            screenWidth: 'screen.width',
+            screenHeight: 'screen.height',
+            colorDepth: 'screen.colorDepth',
+            timezone: 'Intl.DateTimeFormat().resolvedOptions().timeZone'
+        };
+        for (const key in labels) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${labels[key]}</td><td>${fpData[key]}</td>`;
+            tbody.appendChild(tr);
+        }
     }
 
     async function sha256(str) {
@@ -64,9 +108,13 @@
     }
 
     async function showFingerprint() {
+        renderFingerprintData();
         const fp = await getFingerprint();
         document.getElementById('fingerprint').textContent = fp;
     }
+
+    // ページ読み込み時に自動表示
+    window.addEventListener('DOMContentLoaded', showFingerprint);
     </script>
 </body>
 </html>
